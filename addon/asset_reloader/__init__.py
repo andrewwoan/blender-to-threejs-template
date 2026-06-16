@@ -1,7 +1,7 @@
 bl_info = {
     "name": "Asset Reloader",
     "author": "andrewwoan",
-    "version": (1, 2, 0),
+    "version": (1, 3, 0),
     "blender": (4, 0, 0),
     "location": "View3D > Sidebar (N) > Asset Reloader",
     "description": "Export marked collections to GLB + texture images into a web project, with a manifest for JS codegen + HMR.",
@@ -172,6 +172,8 @@ class RELOADER_PT_panel(bpy.types.Panel):
 
 classes = (RELOADER_OT_export, RELOADER_PT_panel)
 
+addon_keymaps = []
+
 
 def register():
     bpy.types.Collection.glb_do_export = bpy.props.BoolProperty(
@@ -192,8 +194,22 @@ def register():
     for cls in classes:
         bpy.utils.register_class(cls)
 
+    # Shift+E in the 3D viewport (Object Mode) triggers the export.
+    wm = bpy.context.window_manager
+    kc = wm.keyconfigs.addon
+    if kc:
+        km = kc.keymaps.new(name="Object Mode", space_type="EMPTY")
+        kmi = km.keymap_items.new(
+            "reloader.export_glb", type="E", value="PRESS", shift=True
+        )
+        addon_keymaps.append((km, kmi))
+
 
 def unregister():
+    for km, kmi in addon_keymaps:
+        km.keymap_items.remove(kmi)
+    addon_keymaps.clear()
+
     for cls in reversed(classes):
         bpy.utils.unregister_class(cls)
     del bpy.types.Collection.glb_do_export

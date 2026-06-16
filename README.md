@@ -65,7 +65,7 @@ over the generated `modelClasses` instead of hand-instantiating each model.
 1. In Blender, set the **Project** field (the panel) to your project root — saved
    per `.blend`, so each file remembers its own target.
 2. Tick the collections you want to export (empty ones are skipped automatically).
-3. Hit **Export Marked Collections**.
+3. Hit **Export Marked Collections** (or press **Shift+E** in the viewport in Object Mode).
 4. With `npm run dev` running, the page reloads with the new/updated models.
 
 New model = new collection → tick → export. A `World/<Name>.js` class is
