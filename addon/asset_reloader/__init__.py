@@ -1,7 +1,7 @@
 bl_info = {
     "name": "Asset Reloader",
     "author": "andrewwoan",
-    "version": (1, 3, 0),
+    "version": (1, 4, 0),
     "blender": (4, 0, 0),
     "location": "View3D > Sidebar (N) > Asset Reloader",
     "description": "Export marked collections to GLB + texture images into a web project, with a manifest for JS codegen + HMR.",
@@ -46,6 +46,23 @@ def _dirs(scene):
         os.path.normpath(os.path.join(root, models)),
         os.path.normpath(os.path.join(root, textures)),
     )
+
+
+def _export_options(scene):
+    """Map the panel's Export Options to glTF exporter kwargs."""
+    return {
+        "export_apply": scene.reloader_apply_modifiers,
+        "export_draco_mesh_compression_enable": scene.reloader_draco,
+        "export_draco_mesh_compression_level": scene.reloader_draco_level,
+        "export_materials": scene.reloader_materials,
+        "export_image_format": scene.reloader_image_format,
+        "export_animations": scene.reloader_export_animations,
+        "export_cameras": scene.reloader_export_cameras,
+        "export_lights": scene.reloader_export_lights,
+        "export_tangents": scene.reloader_export_tangents,
+        "export_extras": scene.reloader_export_extras,
+        "export_yup": scene.reloader_yup,
+    }
 
 
 def _find_layer_collection(layer_coll, name):
@@ -97,6 +114,7 @@ class RELOADER_OT_export(bpy.types.Operator):
         models_dir, textures_dir = _dirs(scene)
         os.makedirs(models_dir, exist_ok=True)
 
+        opts = _export_options(scene)
         original_active = view_layer.active_layer_collection
         exported_files = []
         skipped_empty = []
@@ -120,7 +138,7 @@ class RELOADER_OT_export(bpy.types.Operator):
                 use_active_collection=True,
                 use_active_collection_with_nested=True,
                 use_visible=False,
-                export_apply=False,
+                **opts,
             )
             exported_files.append(filename)
 
@@ -152,7 +170,23 @@ class RELOADER_PT_panel(bpy.types.Panel):
         layout.prop(scene, "reloader_project_dir", text="Project")
         if not _project_root(scene) or not os.path.isdir(_project_root(scene)):
             layout.label(text="Set your project root folder", icon="ERROR")
-        layout.prop(scene, "reloader_export_textures")
+
+        layout.separator()
+        layout.label(text="Export Options:")
+        box = layout.box()
+        box.prop(scene, "reloader_apply_modifiers")
+        box.prop(scene, "reloader_draco")
+        if scene.reloader_draco:
+            box.prop(scene, "reloader_draco_level")
+        box.prop(scene, "reloader_materials")
+        box.prop(scene, "reloader_image_format")
+        box.prop(scene, "reloader_export_animations")
+        box.prop(scene, "reloader_export_cameras")
+        box.prop(scene, "reloader_export_lights")
+        box.prop(scene, "reloader_export_tangents")
+        box.prop(scene, "reloader_export_extras")
+        box.prop(scene, "reloader_yup")
+        box.prop(scene, "reloader_export_textures")
 
         layout.separator()
         layout.label(text="Collections to export:")
@@ -189,6 +223,76 @@ def register():
     )
     bpy.types.Scene.reloader_export_textures = bpy.props.BoolProperty(
         name="Also export texture images",
+        description="Save texture-paint / image datablocks as PNGs into texturesDir",
+        default=True,
+    )
+    bpy.types.Scene.reloader_apply_modifiers = bpy.props.BoolProperty(
+        name="Apply Modifiers",
+        description="Apply modifiers (on a temporary copy) before export",
+        default=False,
+    )
+    bpy.types.Scene.reloader_draco = bpy.props.BoolProperty(
+        name="Draco Compression",
+        description="Compress mesh data with Draco (web side needs a DRACOLoader)",
+        default=False,
+    )
+    bpy.types.Scene.reloader_draco_level = bpy.props.IntProperty(
+        name="Compression Level",
+        description="Draco compression level (higher = smaller files, slower)",
+        default=6,
+        min=0,
+        max=10,
+    )
+    bpy.types.Scene.reloader_materials = bpy.props.EnumProperty(
+        name="Materials",
+        description="How materials are exported",
+        items=[
+            ("EXPORT", "Export", "Export full materials"),
+            ("PLACEHOLDER", "Placeholder", "Material slots only, no data"),
+            ("VIEWPORT", "Viewport", "Export viewport material settings"),
+            ("NONE", "No Export", "Do not export materials"),
+        ],
+        default="EXPORT",
+    )
+    bpy.types.Scene.reloader_image_format = bpy.props.EnumProperty(
+        name="Images",
+        description="How images embedded in the GLB are encoded",
+        items=[
+            ("AUTO", "Automatic", "Keep PNGs as PNG, JPEGs as JPEG"),
+            ("JPEG", "JPEG", "Encode all images as JPEG"),
+            ("WEBP", "WebP", "Encode all images as WebP"),
+            ("NONE", "None", "Do not embed images"),
+        ],
+        default="AUTO",
+    )
+    bpy.types.Scene.reloader_export_animations = bpy.props.BoolProperty(
+        name="Animations",
+        description="Export actions / animation data",
+        default=True,
+    )
+    bpy.types.Scene.reloader_export_cameras = bpy.props.BoolProperty(
+        name="Cameras",
+        description="Export cameras",
+        default=False,
+    )
+    bpy.types.Scene.reloader_export_lights = bpy.props.BoolProperty(
+        name="Punctual Lights",
+        description="Export lights via KHR_lights_punctual",
+        default=False,
+    )
+    bpy.types.Scene.reloader_export_tangents = bpy.props.BoolProperty(
+        name="Tangents",
+        description="Export vertex tangents (needed for some normal-map setups)",
+        default=False,
+    )
+    bpy.types.Scene.reloader_export_extras = bpy.props.BoolProperty(
+        name="Custom Properties",
+        description="Export custom properties as glTF extras",
+        default=False,
+    )
+    bpy.types.Scene.reloader_yup = bpy.props.BoolProperty(
+        name="+Y Up",
+        description="Convert to glTF's +Y up convention (recommended for three.js)",
         default=True,
     )
     for cls in classes:
@@ -215,6 +319,17 @@ def unregister():
     del bpy.types.Collection.glb_do_export
     del bpy.types.Scene.reloader_project_dir
     del bpy.types.Scene.reloader_export_textures
+    del bpy.types.Scene.reloader_apply_modifiers
+    del bpy.types.Scene.reloader_draco
+    del bpy.types.Scene.reloader_draco_level
+    del bpy.types.Scene.reloader_materials
+    del bpy.types.Scene.reloader_image_format
+    del bpy.types.Scene.reloader_export_animations
+    del bpy.types.Scene.reloader_export_cameras
+    del bpy.types.Scene.reloader_export_lights
+    del bpy.types.Scene.reloader_export_tangents
+    del bpy.types.Scene.reloader_export_extras
+    del bpy.types.Scene.reloader_yup
 
 
 if __name__ == "__main__":
