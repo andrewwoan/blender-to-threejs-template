@@ -1,7 +1,7 @@
 bl_info = {
     "name": "Asset Reloader",
     "author": "andrewwoan",
-    "version": (1, 4, 0),
+    "version": (1, 5, 0),
     "blender": (4, 0, 0),
     "location": "View3D > Sidebar (N) > Asset Reloader",
     "description": "Export marked collections to GLB + texture images into a web project, with a manifest for JS codegen + HMR.",
@@ -172,23 +172,6 @@ class RELOADER_PT_panel(bpy.types.Panel):
             layout.label(text="Set your project root folder", icon="ERROR")
 
         layout.separator()
-        layout.label(text="Export Options:")
-        box = layout.box()
-        box.prop(scene, "reloader_apply_modifiers")
-        box.prop(scene, "reloader_draco")
-        if scene.reloader_draco:
-            box.prop(scene, "reloader_draco_level")
-        box.prop(scene, "reloader_materials")
-        box.prop(scene, "reloader_image_format")
-        box.prop(scene, "reloader_export_animations")
-        box.prop(scene, "reloader_export_cameras")
-        box.prop(scene, "reloader_export_lights")
-        box.prop(scene, "reloader_export_tangents")
-        box.prop(scene, "reloader_export_extras")
-        box.prop(scene, "reloader_yup")
-        box.prop(scene, "reloader_export_textures")
-
-        layout.separator()
         layout.label(text="Collections to export:")
         box = layout.box()
         colls = list(bpy.data.collections)
@@ -199,6 +182,31 @@ class RELOADER_PT_panel(bpy.types.Panel):
             row.prop(coll, "glb_do_export", text=coll.name)
             if len(coll.all_objects) == 0:
                 row.label(text="empty", icon="ERROR")
+
+        layout.separator()
+        header = layout.row()
+        header.prop(
+            scene,
+            "reloader_show_options",
+            icon="TRIA_DOWN" if scene.reloader_show_options else "TRIA_RIGHT",
+            text="Export Options",
+            emboss=False,
+        )
+        if scene.reloader_show_options:
+            box = layout.box()
+            box.prop(scene, "reloader_apply_modifiers")
+            box.prop(scene, "reloader_draco")
+            if scene.reloader_draco:
+                box.prop(scene, "reloader_draco_level")
+            box.prop(scene, "reloader_materials")
+            box.prop(scene, "reloader_image_format")
+            box.prop(scene, "reloader_export_animations")
+            box.prop(scene, "reloader_export_cameras")
+            box.prop(scene, "reloader_export_lights")
+            box.prop(scene, "reloader_export_tangents")
+            box.prop(scene, "reloader_export_extras")
+            box.prop(scene, "reloader_yup")
+            box.prop(scene, "reloader_export_textures")
 
         layout.separator()
         layout.operator("reloader.export_glb", icon="EXPORT")
@@ -295,6 +303,11 @@ def register():
         description="Convert to glTF's +Y up convention (recommended for three.js)",
         default=True,
     )
+    bpy.types.Scene.reloader_show_options = bpy.props.BoolProperty(
+        name="Show Export Options",
+        description="Expand the export options section",
+        default=False,
+    )
     for cls in classes:
         bpy.utils.register_class(cls)
 
@@ -330,6 +343,7 @@ def unregister():
     del bpy.types.Scene.reloader_export_tangents
     del bpy.types.Scene.reloader_export_extras
     del bpy.types.Scene.reloader_yup
+    del bpy.types.Scene.reloader_show_options
 
 
 if __name__ == "__main__":

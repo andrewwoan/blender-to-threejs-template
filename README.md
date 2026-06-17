@@ -70,7 +70,8 @@ over the generated `modelClasses` instead of hand-instantiating each model.
 
 ### Export Options
 
-The panel's **Export Options** section mirrors Blender's glTF exporter: apply
+The collapsible **Export Options** dropdown (below the collections list) mirrors
+Blender's glTF exporter: apply
 modifiers, Draco mesh compression (+ level), materials mode, image format,
 animations, cameras, punctual lights, tangents, custom properties (extras), and
 +Y up. They're saved per `.blend`. Note: enabling **Draco** requires a
